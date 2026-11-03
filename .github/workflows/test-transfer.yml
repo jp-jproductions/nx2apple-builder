@@ -1,5 +1,5 @@
 
-name: Test Private BOTW Transfer
+name: Diagnose Private Connection
 
 on:
   workflow_dispatch:
@@ -12,21 +12,31 @@ jobs:
     runs-on: xcode-27
 
     steps:
+      - name: Show runner information
+        run: |
+          uname -a
+          sw_vers
+
       - name: Connect to Tailscale
         uses: tailscale/github-action@v4
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
-      - name: Test Windows server
+      - name: Check Tailscale connection
         env:
           SERVER_IP: ${{ vars.BOTW_SERVER_IP }}
         run: |
-          set -euo pipefail
+          set -x
 
-          echo "Testing private connection..."
+          tailscale status
+          tailscale ip -4
 
-          curl --fail --silent --show-error \
-            --head --max-time 15 \
-            "http://${SERVER_IP}:8765/base.nsp"
+          echo "Testing Windows IP..."
 
-          echo "Connection successful"
+          tailscale ping --timeout=10s "$SERVER_IP" || true
+
+      - name: Check HTTP port
+        env:
+          SERVER_IP: ${{ vars.BOTW_SERVER_IP }}
+        run: |
+          nc -vz -G 10 "$SERVER_IP" 8765
