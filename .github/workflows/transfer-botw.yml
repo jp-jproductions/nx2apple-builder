@@ -1,0 +1,65 @@
+
+name: Transfer BOTW files
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  transfer:
+    runs-on: xcode-27
+
+    steps:
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
+      - name: Download game files privately
+        env:
+          SERVER_IP: ${{ vars.BOTW_SERVER_IP }}
+        run: |
+          set -euo pipefail
+          umask 077
+
+          DEST="$RUNNER_TEMP/BOTW"
+          mkdir -p "$DEST"
+          cd "$DEST"
+
+          FILES=(
+            "base.nsp"
+            "update.nsp"
+            "dlcpack1.nsp"
+            "dlcpack2.nsp"
+            "prod.keys"
+          )
+
+          for file in "${FILES[@]}"; do
+            echo "Downloading: $file"
+
+            curl --fail --location \
+              --retry 3 \
+              --retry-all-errors \
+              --connect-timeout 30 \
+              --output "$file.part" \
+              "http://${SERVER_IP}:8765/${file}"
+
+            mv "$file.part" "$file"
+
+            echo "Completed: $file"
+          done
+
+          echo "All files transferred"
+
+          echo "Available storage:"
+          df -h /
+
+          echo "Checking files:"
+          for file in "${FILES[@]}"; do
+            test -s "$file"
+            echo "$file OK"
+          done
+
+          echo "Temporary files ready"
