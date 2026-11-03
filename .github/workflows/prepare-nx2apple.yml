@@ -1,0 +1,70 @@
+
+name: Prepare NX2Apple
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: xcode-27
+
+    steps:
+      - name: Check Apple Silicon and Xcode
+        run: |
+          echo "Architecture:"
+          uname -m
+
+          echo "macOS:"
+          sw_vers
+
+          echo "Selecting Xcode 27.2:"
+          sudo xcode-select -s /Applications/Xcode_27.2.app
+
+          xcodebuild -version
+          xcodebuild -showsdks
+
+          echo "Initial disk space:"
+          df -h /
+
+      - name: Download NX2Apple
+        run: |
+          git clone --depth 1 \
+            https://github.com/LNPANDY/NX2Apple.git \
+            nx2apple
+
+      - name: Sync NX2Apple engine
+        working-directory: nx2apple
+        run: |
+          python3 tools/engine.py sync
+
+      - name: Install build dependencies
+        working-directory: nx2apple
+        run: |
+          brew bundle --file=Brewfile
+
+          python3 -m venv .venv
+
+          .venv/bin/python -m pip install \
+            lz4 capstone fonttools zbic nsz \
+            "backports.zstd; python_version < '3.14'"
+
+      - name: Verify environment
+        working-directory: nx2apple
+        run: |
+          echo "Xcode:"
+          xcodebuild -version
+
+          echo "Python:"
+          .venv/bin/python --version
+
+          echo ".NET:"
+          dotnet --version
+
+          echo "Disk remaining:"
+          df -h /
+
+          echo "Engine:"
+          python3 tools/engine.py status
