@@ -1,19 +1,41 @@
 
-      - name: Check Windows connection
+name: Test Windows Connection
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: xcode-27
+
+    steps:
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
+      - name: Check Tailscale connection
         env:
           SERVER_IP: ${{ vars.BOTW_SERVER_IP }}
         run: |
           set -euo pipefail
 
           if [ -z "$SERVER_IP" ]; then
-            echo "ERROR: BOTW_SERVER_IP is empty"
+            echo "ERROR: BOTW_SERVER_IP is not configured"
             exit 1
           fi
 
           echo "Windows IP: $SERVER_IP"
+          tailscale status
+          tailscale ping --timeout=10s "$SERVER_IP"
 
-          tailscale ping "$SERVER_IP"
-
+      - name: Check HTTP port
+        env:
+          SERVER_IP: ${{ vars.BOTW_SERVER_IP }}
+        run: |
+          set -euo pipefail
           nc -vz -G 10 "$SERVER_IP" 8765
-
           echo "Connection successful"
