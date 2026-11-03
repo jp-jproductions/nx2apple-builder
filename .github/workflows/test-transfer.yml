@@ -1,0 +1,32 @@
+
+name: Test Private BOTW Transfer
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: xcode-27
+
+    steps:
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
+      - name: Test Windows server
+        env:
+          SERVER_IP: ${{ vars.BOTW_SERVER_IP }}
+        run: |
+          set -euo pipefail
+
+          echo "Testing private connection..."
+
+          curl --fail --silent --show-error \
+            --head --max-time 15 \
+            "http://${SERVER_IP}:8765/base.nsp"
+
+          echo "Connection successful"
